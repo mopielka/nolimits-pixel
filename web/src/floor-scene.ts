@@ -31,6 +31,19 @@ export const VIEWS = {
 } as const;
 export type ViewId = keyof typeof VIEWS;
 
+export const FRAMINGS = {
+  fill: 'Wypełnij obszar',
+  human: 'Jak ludzki wzrok (ok. 90°, 3:2)',
+} as const;
+export type Framing = keyof typeof FRAMINGS;
+
+const FILL_VERTICAL_FOV = 55;
+/**
+ * Real binocular vision spans ~200° × 135°, which a flat screen can only show as a fisheye;
+ * 90° across at 3:2 keeps roughly the human proportions without the distortion.
+ */
+const HUMAN = { aspect: 3 / 2, horizontalFov: 90 };
+
 export interface ViewOptions {
   /** Viewer's eye height above the floor, metres. */
   eyeHeight: number;
@@ -60,7 +73,7 @@ function noiseTexture(base: [number, number, number], spread: number): THREE.Can
 export class FloorScene {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
-  private readonly perspective = new THREE.PerspectiveCamera(55, 1, 0.05, 50);
+  private readonly perspective = new THREE.PerspectiveCamera(FILL_VERTICAL_FOV, 1, 0.05, 50);
   private readonly ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50);
   private camera: THREE.Camera = this.perspective;
   private readonly controls: OrbitControls;
@@ -71,6 +84,7 @@ export class FloorScene {
   private readonly floorTex: THREE.CanvasTexture;
   private readonly spill: THREE.RectAreaLight;
   private view: ViewId = 'side';
+  private framing: Framing = 'fill';
   private readonly container: HTMLElement;
 
   constructor(container: HTMLElement) {
@@ -185,6 +199,11 @@ export class FloorScene {
     this.spill.intensity = level * 14;
   }
 
+  setFraming(framing: Framing): void {
+    this.framing = framing;
+    this.resize();
+  }
+
   setBloom(enabled: boolean): void {
     this.bloom.enabled = enabled;
   }
@@ -193,11 +212,6 @@ export class FloorScene {
     const leavingTop = this.view.startsWith('top');
     this.view = view;
     this.controls.enabled = view === 'free';
-    if (view === 'free') {
-      if (leavingTop) this.placePerspective('side', opts);
-      this.useCamera(this.perspective);
-      return;
-    }
     if (view === 'top' || view === 'top-portrait') {
       this.ortho.position.set(0, 12, 0);
       // Portrait puts the right short side at the top, as seen from the left entrance.
@@ -205,11 +219,11 @@ export class FloorScene {
       else this.ortho.up.set(1, 0, 0);
       this.ortho.lookAt(0, 0, 0);
       this.useCamera(this.ortho);
-      this.resize();
-      return;
+    } else {
+      if (view !== 'free' || leavingTop) this.placePerspective(view === 'free' ? 'side' : view, opts);
+      this.useCamera(this.perspective);
     }
-    this.placePerspective(view, opts);
-    this.useCamera(this.perspective);
+    this.resize();
   }
 
   private placePerspective(view: ViewId, { eyeHeight, distance }: ViewOptions): void {
@@ -244,12 +258,21 @@ export class FloorScene {
   }
 
   private resize(): void {
-    const { clientWidth: w, clientHeight: h } = this.container;
+    let { clientWidth: w, clientHeight: h } = this.container;
     if (!w || !h) return;
+    const human = this.framing === 'human' && !this.view.startsWith('top');
+    if (human) {
+      // Letterbox to the human proportions instead of stretching to the panel.
+      [w, h] = w / h > HUMAN.aspect ? [h * HUMAN.aspect, h] : [w, w / HUMAN.aspect];
+      [w, h] = [Math.floor(w), Math.floor(h)];
+    }
     this.renderer.setSize(w, h);
     this.composer.setSize(w, h);
     const aspect = w / h;
     this.perspective.aspect = aspect;
+    this.perspective.fov = human
+      ? THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(HUMAN.horizontalFov / 2)) / aspect))
+      : FILL_VERTICAL_FOV;
     this.perspective.updateProjectionMatrix();
 
     const margin = 0.5;

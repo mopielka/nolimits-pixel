@@ -1,4 +1,4 @@
-import { FloorScene, VIEWS, type ViewId } from './floor-scene.ts';
+import { FRAMINGS, FloorScene, VIEWS, type Framing, type ViewId } from './floor-scene.ts';
 import { bundled, fromFile, type PlaybackSource } from './sources.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -12,6 +12,7 @@ const ui = {
   dist: $<HTMLInputElement>('dist'),
   distOut: $<HTMLOutputElement>('dist-out'),
   bloom: $<HTMLInputElement>('bloom'),
+  framing: $<HTMLSelectElement>('framing'),
   warnings: $('warnings'),
   play: $<HTMLButtonElement>('play'),
   scrub: $<HTMLInputElement>('scrub'),
@@ -27,7 +28,12 @@ const floor = new FloorScene($('stage'));
 /** Remembered across reloads so editing an animation keeps your place. */
 const saved = (() => {
   try {
-    return JSON.parse(sessionStorage.getItem('pixel-player') ?? '{}') as { source?: string; view?: ViewId; time?: number };
+    return JSON.parse(sessionStorage.getItem('pixel-player') ?? '{}') as {
+      source?: string;
+      view?: ViewId;
+      framing?: Framing;
+      time?: number;
+    };
   } catch {
     return {};
   }
@@ -75,8 +81,18 @@ function setView(id: ViewId) {
   view = id;
   save({ view });
   for (const [vid, b] of viewButtons) b.setAttribute('aria-pressed', String(vid === id));
+  // The mouse drives the free camera and top views have no viewer, so the viewer controls don't apply.
+  const viewerFixed = id === 'free' || id.startsWith('top');
+  ui.eye.disabled = ui.dist.disabled = viewerFixed;
+  ui.framing.disabled = id.startsWith('top');
   floor.setView(id, viewOptions());
 }
+
+ui.framing.onchange = () => {
+  const framing = ui.framing.value as Framing;
+  save({ framing });
+  floor.setFraming(framing);
+};
 
 function onViewerChange() {
   ui.eyeOut.textContent = `${Number(ui.eye.value).toFixed(2)} m`;
@@ -236,6 +252,9 @@ window.addEventListener('keydown', (e) => {
 });
 
 const initial = bundled.find((p) => p.id === saved.source) ?? bundled[0];
+for (const [id, label] of Object.entries(FRAMINGS)) ui.framing.append(new Option(label, id));
+ui.framing.value = saved.framing && saved.framing in FRAMINGS ? saved.framing : 'fill';
+floor.setFraming(ui.framing.value as Framing);
 onViewerChange();
 setView(view);
 if (initial) {
