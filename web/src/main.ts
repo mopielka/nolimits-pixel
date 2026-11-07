@@ -1,4 +1,5 @@
 import { FRAMINGS, FloorScene, VIEWS, type Framing, type ViewId } from './floor-scene.ts';
+import { createHeadControl } from './head-control.ts';
 import {
   canRead,
   canWatchFolders,
@@ -38,6 +39,7 @@ const ui = {
 };
 
 const floor = new FloorScene($('stage'));
+const head = createHeadControl($('stage'), $('joystick'));
 
 /** Remembered across reloads so editing an animation keeps your place. */
 const saved = (() => {
@@ -100,6 +102,7 @@ function setView(id: ViewId) {
   ui.eye.disabled = ui.dist.disabled = viewerFixed;
   ui.framing.disabled = id.startsWith('top');
   floor.setView(id, viewOptions());
+  head.setEnabled(floor.headTurns);
 }
 
 ui.framing.onchange = () => {
@@ -184,6 +187,8 @@ function tick(now: number) {
     save({ time });
   }
   showFrame();
+  const turn = head.update(dt);
+  if (floor.headTurns) floor.setHead(turn.x, turn.y);
   floor.render();
   requestAnimationFrame(tick);
 }

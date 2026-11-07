@@ -226,3 +226,47 @@ button:hover,
     border-left: 0;
   }
 }
+
+#stage.can-look {
+  cursor: grab;
+  touch-action: none;
+}
+
+#stage.looking {
+  cursor: grabbing;
+}
+
+.joystick {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 25%);
+  background: rgb(20 20 27 / 55%);
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  z-index: 1;
+}
+
+.joystick[hidden] {
+  display: none;
+}
+
+.joystick .knob {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 70%);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 50%);
+  pointer-events: none;
+}
+
+/* The joystick is for touch screens; with a mouse you drag the view itself. */
+@media (hover: hover) and (pointer: fine) {
+  .joystick {
+    display: none;
+  }
+}

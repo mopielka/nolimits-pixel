@@ -4,8 +4,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import type { Image } from '../../src/core/index.ts';
+import { HumanVisionShader } from './human-vision.ts';
 
 const COLS = 28;
 const ROWS = 16;
@@ -33,16 +35,20 @@ export type ViewId = keyof typeof VIEWS;
 
 export const FRAMINGS = {
   fill: 'Wypełnij obszar',
-  human: 'Jak ludzki wzrok (ok. 90°, 3:2)',
+  human: 'Jak ludzki wzrok (owal, ostry środek)',
 } as const;
 export type Framing = keyof typeof FRAMINGS;
 
 const FILL_VERTICAL_FOV = 55;
 /**
- * Real binocular vision spans ~200° × 135°, which a flat screen can only show as a fisheye;
- * 90° across at 3:2 keeps roughly the human proportions without the distortion.
+ * Binocular vision spans ~200° × 135°; a flat screen can't show that without a fisheye, so the
+ * human framing renders 120° across at about the field's proportions and lets the vision pass
+ * shape, blur and fade it.
  */
-const HUMAN = { aspect: 3 / 2, horizontalFov: 90 };
+const HUMAN = { aspect: 1.5, horizontalFov: 120 };
+
+/** How far the head can turn from the view's resting direction, in radians. */
+const HEAD = { yaw: THREE.MathUtils.degToRad(70), pitchUp: THREE.MathUtils.degToRad(35), pitchDown: THREE.MathUtils.degToRad(45) };
 
 export interface ViewOptions {
   /** Viewer's eye height above the floor, metres. */
@@ -80,6 +86,10 @@ export class FloorScene {
   private readonly composer: EffectComposer;
   private readonly renderPass: RenderPass;
   private readonly bloom: UnrealBloomPass;
+  private readonly vision: ShaderPass;
+  /** The view's resting direction (from placePerspective) and the head's turn away from it. */
+  private readonly restLook = new THREE.Vector3();
+  private readonly head = { yaw: 0, pitch: 0 };
   private readonly floorCtx: CanvasRenderingContext2D;
   private readonly floorTex: THREE.CanvasTexture;
   private readonly spill: THREE.RectAreaLight;
@@ -121,6 +131,9 @@ export class FloorScene {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.3, 0.25, 0.6);
     this.composer.addPass(this.renderPass);
     this.composer.addPass(this.bloom);
+    this.vision = new ShaderPass(HumanVisionShader);
+    this.vision.enabled = false;
+    this.composer.addPass(this.vision);
     this.composer.addPass(new OutputPass());
 
     new ResizeObserver(() => this.resize()).observe(container);
@@ -204,6 +217,22 @@ export class FloorScene {
     this.resize();
   }
 
+  /**
+   * Turns the head, each axis −1…1 as a fraction of a comfortable turn: x right, y down
+   * (like screen coordinates, so a joystick or drag maps straight on).
+   */
+  setHead(x: number, y: number): void {
+    x = THREE.MathUtils.clamp(x, -1, 1);
+    y = THREE.MathUtils.clamp(y, -1, 1);
+    this.head.yaw = -x * HEAD.yaw;
+    this.head.pitch = -y * (y > 0 ? HEAD.pitchDown : HEAD.pitchUp);
+    if (this.headTurns) this.aim();
+  }
+
+  get headTurns(): boolean {
+    return this.view !== 'free' && !this.view.startsWith('top');
+  }
+
   setBloom(enabled: boolean): void {
     this.bloom.enabled = enabled;
   }
@@ -248,8 +277,20 @@ export class FloorScene {
         c.position.set(0, y, FLOOR_D / 2 + distance);
         look.set(0, 0, -0.4);
     }
-    c.lookAt(look);
+    this.restLook.copy(look);
     this.controls.target.copy(look);
+    this.aim();
+  }
+
+  /** Points the camera along the resting direction turned by the head's yaw and pitch. */
+  private aim(): void {
+    const c = this.perspective;
+    const dir = this.restLook.clone().sub(c.position).normalize();
+    const pitch = Math.asin(dir.y) + this.head.pitch;
+    const yaw = Math.atan2(dir.x, dir.z) + this.head.yaw;
+    const clamped = THREE.MathUtils.clamp(pitch, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05);
+    const turned = new THREE.Vector3(Math.sin(yaw) * Math.cos(clamped), Math.sin(clamped), Math.cos(yaw) * Math.cos(clamped));
+    c.lookAt(c.position.clone().add(turned));
   }
 
   private useCamera(camera: THREE.Camera): void {
@@ -274,6 +315,8 @@ export class FloorScene {
       ? THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(HUMAN.horizontalFov / 2)) / aspect))
       : FILL_VERTICAL_FOV;
     this.perspective.updateProjectionMatrix();
+    this.vision.enabled = human;
+    this.vision.uniforms.resolution.value.set(w, h);
 
     const margin = 0.5;
     const [fw, fd] = this.view === 'top-portrait' ? [FLOOR_D, FLOOR_W] : [FLOOR_W, FLOOR_D];
