@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "title": "Demo – every scene type and a few transitions",
+  "scenes": [
+    {
+      "type": "pixels",
+      "name": "heart",
+      "duration": 3,
+      "transition": {
+        "type": "fade",
+        "duration": 1
+      },
+      "palette": {
+        "r": "#ff1744"
+      },
+      "rows": [
+        "............................",
+        ".....rrrrr........rrrrr.....",
+        "...rrrrrrrrr....rrrrrrrrr...",
+        "..rrrrrrrrrrr..rrrrrrrrrrr..",
+        "..rrrrrrrrrrrrrrrrrrrrrrrr..",
+        "..rrrrrrrrrrrrrrrrrrrrrrrr..",
+        "..rrrrrrrrrrrrrrrrrrrrrrrr..",
+        "...rrrrrrrrrrrrrrrrrrrrrr...",
+        "....rrrrrrrrrrrrrrrrrrrr....",
+        ".....rrrrrrrrrrrrrrrrrr.....",
+        "......rrrrrrrrrrrrrrrr......",
+        ".......rrrrrrrrrrrrrr.......",
+        ".........rrrrrrrrrr.........",
+        "...........rrrrrr...........",
+        ".............rr.............",
+        "............................"
+      ]
+    },
+    {
+      "type": "text",
+      "name": "scroller",
+      "text": "NO LIMITS ♥",
+      "color": "#ff3399",
+      "transition": {
+        "type": "wipe-right",
+        "duration": 0.5
+      }
+    },
+    {
+      "type": "color",
+      "name": "blue",
+      "color": "#0066ff",
+      "duration": 1.5,
+      "transition": {
+        "type": "slide-left",
+        "duration": 0.5
+      }
+    },
+    {
+      "type": "color",
+      "name": "yellow",
+      "color": "#ffdd00",
+      "duration": 1.5,
+      "transition": {
+        "type": "slide-up",
+        "duration": 0.5
+      }
+    },
+    {
+      "type": "text",
+      "name": "static text",
+      "text": "TAŃCZ",
+      "scroll": false,
+      "color": "#00e5ff",
+      "duration": 3,
+      "transition": {
+        "type": "wipe-down",
+        "duration": 0.5
+      }
+    },
+    {
+      "type": "color",
+      "name": "fade out",
+      "color": "#000000",
+      "duration": 1,
+      "transition": {
+        "type": "fade",
+        "duration": 1
+      }
+    }
+  ]
+}
