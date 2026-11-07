@@ -147,7 +147,8 @@ button:hover,
   color: var(--muted);
 }
 
-#play {
+#play,
+#restart {
   width: 40px;
   font-size: 16px;
 }

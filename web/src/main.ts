@@ -31,6 +31,7 @@ const ui = {
   framing: $<HTMLSelectElement>('framing'),
   warnings: $('warnings'),
   play: $<HTMLButtonElement>('play'),
+  restart: $<HTMLButtonElement>('restart'),
   scrub: $<HTMLInputElement>('scrub'),
   time: $('time'),
   scene: $('scene'),
@@ -154,7 +155,16 @@ function seek(t: number) {
   syncAudio(true);
 }
 
-ui.play.onclick = () => setPlaying(!playing);
+const atEnd = () => frameIndex() >= frameCount() - 1;
+
+function restart() {
+  seek(0);
+  setPlaying(true);
+}
+
+// Play at the last frame starts over instead of stopping straight away.
+ui.play.onclick = () => (!playing && atEnd() ? restart() : setPlaying(!playing));
+ui.restart.onclick = restart;
 ui.scrub.oninput = () => seek(Number(ui.scrub.value) / fps());
 ui.speed.onchange = () => syncAudio(true);
 
@@ -362,7 +372,10 @@ window.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement).matches('input[type=text], select')) return;
   if (e.code === 'Space') {
     e.preventDefault();
-    setPlaying(!playing);
+    ui.play.click();
+  } else if (e.key === 'Home') {
+    e.preventDefault();
+    restart();
   } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
     e.preventDefault();
     setPlaying(false);
