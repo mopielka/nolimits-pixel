@@ -38,10 +38,26 @@ The build turns a package into the deliverable described in [SPEC.md](SPEC.md): 
 | `height`     | `16`      | Canvas height in pixels (the floor is 16).                              |
 | `fps`        | `25`      | Frame rate (the floor plays 25).                                        |
 | `background` | `#000000` | What the first scene fades/slides in from.                              |
-| `audio`      | –         | Optional `{ "src": "music.mp3", "offset": seconds }`; offset delays the music. |
+| `audio`      | –         | Optional music, see below.                                              |
 | `scenes`     | –         | Played in order, back to back.                                          |
 
 Colours are `#rgb` or `#rrggbb`.
+
+### Music
+
+```json
+"audio": { "src": "song.mp3", "start": 0, "offset": 0, "fadeIn": 0, "fadeOut": 6 }
+```
+
+| Field     | Default | Meaning                                                                 |
+| --------- | ------- | ----------------------------------------------------------------------- |
+| `src`     | –       | Audio file in the package (MP3, WAV, OGG, M4A).                          |
+| `start`   | `0`     | Seconds into the file where playback begins – to skip an intro.          |
+| `offset`  | `0`     | Seconds of silence before the music starts.                             |
+| `fadeIn`  | `0`     | Fade-in length, starting when the music starts.                         |
+| `fadeOut` | `0`     | Fade-out length, ending exactly on the last frame.                      |
+
+The build writes the music as an MP3 cut to exactly the animation's length (the school starts it with the first frame), with the trim, delay and fades applied; the previews and the web player use the same settings.
 
 ## Scene timing
 
@@ -161,6 +177,6 @@ Up/down refer to the image (row 0 is the top).
 
 The build warns (it doesn't fail) when the output breaks the guidance in [SPEC.md](SPEC.md):
 
-- **dark pixels** – lit pixels with every channel below 40 for more than 1 s (passing fades are fine), which look off or "dirty" on the floor;
+- **dark pixels** – a lit pixel holding the same colour with every channel below 40 for more than 1 s (fades are fine), which look off or "dirty" on the floor;
 - **long full white** – at least half the floor near-white for more than 3 s;
 - **strobing** – more than 3 full-floor light/dark flashes within one second.

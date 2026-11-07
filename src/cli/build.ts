@@ -4,7 +4,7 @@ import { basename, extname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { zipSync } from 'fflate';
 import { PNG } from 'pngjs';
-import { compile, lint, readPackage, toRGBA, unzipPackage, type Image, type PackageFiles } from '../core/index.ts';
+import { compile, lint, readPackage, toRGBA, unzipPackage, type AudioTrack, type Image, type PackageFiles } from '../core/index.ts';
 
 const PREVIEW_SCALE = 20;
 const TILE_GAP = 2;
@@ -26,6 +26,21 @@ function encodePng(img: Image): Buffer {
   const png = new PNG({ width: img.width, height: img.height });
   png.data = Buffer.from(toRGBA(img));
   return PNG.sync.write(png, { colorType: 2 });
+}
+
+/**
+ * The school starts the music with the first frame, so the delivered file is cut to
+ * exactly the animation's length: trimmed, delayed by `offset`, faded, padded with silence.
+ */
+function renderAudio(source: string, target: string, audio: AudioTrack, duration: number) {
+  const { start = 0, offset = 0, fadeIn = 0, fadeOut = 0 } = audio;
+  const filters = [`adelay=${Math.round(offset * 1000)}:all=1`, 'apad'];
+  if (fadeIn > 0) filters.push(`afade=t=in:st=${offset}:d=${fadeIn}`);
+  if (fadeOut > 0) filters.push(`afade=t=out:st=${Math.max(0, duration - fadeOut)}:d=${fadeOut}`);
+  const args = ['-y', '-loglevel', 'error', '-ss', String(start), '-i', source];
+  args.push('-af', filters.join(','), '-t', String(duration), '-c:a', 'libmp3lame', '-b:a', '192k', target);
+  const result = spawnSync('ffmpeg', args, { stdio: 'inherit' });
+  if (result.status !== 0) throw new Error(`ffmpeg failed to render ${basename(target)}`);
 }
 
 function hasFfmpeg(): boolean {
@@ -73,17 +88,27 @@ async function build(input: string, outRoot: string, preview: boolean) {
   }
   writeFileSync(join(outDir, `${name}.zip`), zipSync(zipEntries, { level: 0 }));
 
+  const duration = anim.frameCount / anim.fps;
+  const ffmpeg = hasFfmpeg();
   let audioPath: string | undefined;
   if (pkg.audio) {
-    audioPath = join(outDir, basename(pkg.audio.path));
-    writeFileSync(audioPath, pkg.audio.bytes);
+    const source = join(outDir, `source-${basename(pkg.audio.path)}`);
+    writeFileSync(source, pkg.audio.bytes);
+    if (ffmpeg) {
+      audioPath = join(outDir, `${basename(pkg.audio.path, extname(pkg.audio.path))}.mp3`);
+      renderAudio(source, audioPath, pkg.animation.audio!, duration);
+      rmSync(source);
+    } else {
+      audioPath = source;
+      console.warn('  ⚠ ffmpeg not found – music copied as is, not trimmed to the animation (brew install ffmpeg)');
+    }
   }
 
-  console.log(`${name}: ${anim.frameCount} frames = ${(anim.frameCount / anim.fps).toFixed(2)} s @ ${anim.fps} fps`);
+  console.log(`${name}: ${anim.frameCount} frames = ${duration.toFixed(2)} s @ ${anim.fps} fps`);
   for (const w of lint(anim)) console.warn(`  ⚠ ${w.kind}: ${w.message}`);
 
   if (!preview) return;
-  if (!hasFfmpeg()) {
+  if (!ffmpeg) {
     console.warn('  ⚠ ffmpeg not found – skipping preview.mp4 (brew install ffmpeg)');
     return;
   }
@@ -97,7 +122,7 @@ async function build(input: string, outRoot: string, preview: boolean) {
 
   function renderPreview(file: string, filters: string) {
     const args = ['-y', '-loglevel', 'error', '-framerate', String(anim.fps), '-i', join(framesDir, 'klatka_%04d.png')];
-    if (audioPath) args.push('-itsoffset', String(pkg.animation.audio?.offset ?? 0), '-i', audioPath, '-shortest');
+    if (audioPath) args.push('-i', audioPath, '-shortest');
     args.push('-vf', filters, '-c:v', 'libx264', '-crf', '12', '-pix_fmt', 'yuv420p', file);
     const result = spawnSync('ffmpeg', args, { stdio: 'inherit' });
     if (result.status !== 0) throw new Error(`ffmpeg failed to render ${basename(file)}`);

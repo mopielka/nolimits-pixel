@@ -224,7 +224,13 @@ export function parseAnimation(json: unknown): Animation {
   let audio: Animation['audio'];
   if (json.audio !== undefined) {
     if (!isObject(json.audio)) throw new FormatError('.audio', 'must be an object');
-    audio = { src: reqString(json.audio, 'src', '.audio'), offset: optNumber(json.audio, 'offset', '.audio') };
+    audio = {
+      src: reqString(json.audio, 'src', '.audio'),
+      offset: optNumber(json.audio, 'offset', '.audio', { min: 0 }),
+      start: optNumber(json.audio, 'start', '.audio', { min: 0 }),
+      fadeIn: optNumber(json.audio, 'fadeIn', '.audio', { min: 0 }),
+      fadeOut: optNumber(json.audio, 'fadeOut', '.audio', { min: 0 }),
+    };
   }
   return {
     version: 1,

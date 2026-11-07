@@ -110,6 +110,17 @@ export interface SpriteDef {
 
 export type Scene = ColorScene | ImageScene | SequenceScene | PixelsScene | TextScene | LayersScene;
 
+export interface AudioTrack {
+  src: string;
+  /** Seconds of silence before the music starts. */
+  offset?: number;
+  /** Seconds into the file where playback begins. */
+  start?: number;
+  fadeIn?: number;
+  /** Fade ending exactly at the animation's last frame. */
+  fadeOut?: number;
+}
+
 export interface Animation {
   version: 1;
   title?: string;
@@ -117,7 +128,7 @@ export interface Animation {
   height: number;
   fps: number;
   background: string;
-  audio?: { src: string; offset?: number };
+  audio?: AudioTrack;
   /** Reusable pixel art for `layers` scenes, keyed by name. */
   sprites: Record<string, SpriteDef>;
   scenes: Scene[];

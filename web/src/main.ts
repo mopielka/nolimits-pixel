@@ -112,15 +112,20 @@ function setPlaying(on: boolean) {
   syncAudio(true);
 }
 
-/** Keeps the music on the animation clock; the music starts `offset` seconds in. */
+/** Keeps the music on the animation clock, with the same trim and fades the build applies. */
 function syncAudio(force = false) {
   if (!audio || !source?.audio) return;
-  const target = time - source.audio.offset;
-  if (!playing || target < 0) {
+  const { offset, start, fadeIn, fadeOut } = source.audio;
+  const end = source.frameCount / source.fps;
+  const target = time - offset + start;
+  if (!playing || time < offset) {
     if (!audio.paused) audio.pause();
-    if (force && target < 0) audio.currentTime = 0;
+    if (force && time < offset) audio.currentTime = start;
     return;
   }
+  const rampIn = fadeIn > 0 ? (time - offset) / fadeIn : 1;
+  const rampOut = fadeOut > 0 ? (end - time) / fadeOut : 1;
+  audio.volume = Math.max(0, Math.min(1, rampIn, rampOut));
   audio.playbackRate = Number(ui.speed.value);
   if (force || Math.abs(audio.currentTime - target) > 0.15) audio.currentTime = target;
   if (audio.paused) audio.play().catch(() => setStatus('Kliknij ▶, żeby włączyć dźwięk'));

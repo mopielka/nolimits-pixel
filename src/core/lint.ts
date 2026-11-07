@@ -17,13 +17,14 @@ const MAX_FLASHES_PER_SECOND = 3;
 
 function stats(img: Image) {
   const pixels = img.width * img.height;
-  const dark = new Uint8Array(pixels);
+  /** The pixel's packed colour when it's lit but too dark, else −1. */
+  const dark = new Int32Array(pixels).fill(-1);
   let white = 0;
   let luminance = 0;
   for (let i = 0; i < img.data.length; i += 3) {
     const [r, g, b] = [img.data[i], img.data[i + 1], img.data[i + 2]];
     const max = Math.max(r, g, b);
-    if (max > 0 && max < DARK_LIMIT) dark[i / 3] = 1;
+    if (max > 0 && max < DARK_LIMIT) dark[i / 3] = (r << 16) | (g << 8) | b;
     if (Math.min(r, g, b) >= WHITE_MIN_CHANNEL) white++;
     luminance += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
   }
@@ -57,8 +58,10 @@ export function lint(anim: CompiledAnimation): LintWarning[] {
   }
 
   const levels: number[] = [];
-  // Fades pass through dark levels briefly, which the spec accepts; only flag pixels that stay dark.
+  // Fades pass through dark levels, which the spec accepts, changing colour every frame or two;
+  // only flag a pixel that holds the same too-dark colour.
   const darkRun = new Uint16Array(anim.width * anim.height);
+  let previousDark = new Int32Array(anim.width * anim.height).fill(-1);
   const darkMinFrames = Math.round(fps * DARK_MIN_SECONDS);
   let firstDark = -1;
   let whiteRun = 0;
@@ -68,9 +71,10 @@ export function lint(anim: CompiledAnimation): LintWarning[] {
     const s = stats(anim.renderFrame(f));
     levels.push(s.luminance);
     for (let p = 0; p < darkRun.length; p++) {
-      darkRun[p] = s.dark[p] ? darkRun[p] + 1 : 0;
+      darkRun[p] = s.dark[p] < 0 ? 0 : s.dark[p] === previousDark[p] ? darkRun[p] + 1 : 1;
       if (firstDark < 0 && darkRun[p] >= darkMinFrames) firstDark = f - darkMinFrames + 1;
     }
+    previousDark = s.dark;
     whiteRun = s.whiteShare >= WHITE_FLOOR_SHARE ? whiteRun + 1 : 0;
     if (!whiteReported && whiteRun > WHITE_MAX_SECONDS * fps) {
       whiteReported = true;

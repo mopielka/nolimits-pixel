@@ -154,3 +154,16 @@ test('layers reject unknown sprites', () => {
     /unknown sprite "nope"/,
   );
 });
+
+test('audio accepts start, offset and fades but rejects negatives', () => {
+  const a = anim([{ type: 'color', color: '#f00', frames: 1 }], { audio: { src: 'song.mp3', start: 12.5, fadeIn: 3, fadeOut: 6 } });
+  assert.deepEqual(a.audio, { src: 'song.mp3', offset: undefined, start: 12.5, fadeIn: 3, fadeOut: 6 });
+  assert.throws(() => anim([{ type: 'color', color: '#f00', frames: 1 }], { audio: { src: 'x.mp3', fadeOut: -1 } }), /fadeOut/);
+});
+
+test('lint lets slow fades through dark levels but flags a steady dark colour', () => {
+  const kinds = (scenes: unknown[]) => lint(compile(anim(scenes))).map((w) => w.kind);
+  const slowFadeOut = { type: 'layers', duration: 6, layers: [{ rect: [28, 16], color: '#5a5a5a', keyframes: [{ t: 0, opacity: 1 }, { t: 6, opacity: 0 }] }] };
+  assert.deepEqual(kinds([slowFadeOut]), []);
+  assert.deepEqual(kinds([{ type: 'color', color: '#202020', duration: 1.2 }]), ['dark']);
+});

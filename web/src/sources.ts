@@ -16,7 +16,7 @@ export interface PlaybackSource {
   frameCount: number;
   frameAt(index: number): Image;
   sceneAt(index: number): string | undefined;
-  audio?: { url: string; offset: number };
+  audio?: { url: string; offset: number; start: number; fadeIn: number; fadeOut: number };
   lint?(): LintWarning[];
 }
 
@@ -41,7 +41,8 @@ export async function fromPackage(files: PackageFiles, title: string): Promise<P
   let audio: PlaybackSource['audio'];
   if (pkg.audio) {
     const type = AUDIO_TYPES[pkg.audio.path.split('.').pop()!.toLowerCase()] ?? 'audio/mpeg';
-    audio = { url: URL.createObjectURL(new Blob([pkg.audio.bytes as BlobPart], { type })), offset: pkg.animation.audio?.offset ?? 0 };
+    const { offset = 0, start = 0, fadeIn = 0, fadeOut = 0 } = pkg.animation.audio!;
+    audio = { url: URL.createObjectURL(new Blob([pkg.audio.bytes as BlobPart], { type })), offset, start, fadeIn, fadeOut };
   }
   return {
     title: pkg.animation.title ?? title,
