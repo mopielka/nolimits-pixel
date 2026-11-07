@@ -7,6 +7,7 @@ import { PNG } from 'pngjs';
 import { compile, lint, readPackage, toRGBA, unzipPackage, type Image, type PackageFiles } from '../core/index.ts';
 
 const PREVIEW_SCALE = 20;
+const TILE_GAP = 2;
 
 function readDir(root: string): PackageFiles {
   const files: PackageFiles = new Map();
@@ -88,15 +89,19 @@ async function build(input: string, outRoot: string, preview: boolean) {
   }
   const w = anim.width * PREVIEW_SCALE;
   const h = anim.height * PREVIEW_SCALE;
-  const args = ['-y', '-loglevel', 'error', '-framerate', String(anim.fps), '-i', join(framesDir, 'klatka_%04d.png')];
-  if (audioPath) args.push('-itsoffset', String(pkg.animation.audio?.offset ?? 0), '-i', audioPath, '-shortest');
-  args.push(
-    '-vf', `scale=${w}:${h}:flags=neighbor`,
-    '-c:v', 'libx264', '-crf', '12', '-pix_fmt', 'yuv420p',
-    join(outDir, 'preview.mp4'),
-  );
-  const result = spawnSync('ffmpeg', args, { stdio: 'inherit' });
-  if (result.status !== 0) throw new Error('ffmpeg failed to render preview.mp4');
+  const scale = `scale=${w}:${h}:flags=neighbor`;
+  // drawgrid only draws each cell's top/left edge, so pad to close the right/bottom border.
+  const tileGaps = `drawgrid=w=${PREVIEW_SCALE}:h=${PREVIEW_SCALE}:t=${TILE_GAP}:c=black,pad=${w + TILE_GAP}:${h + TILE_GAP}:0:0:black`;
+  renderPreview(join(outDir, 'preview.mp4'), scale);
+  renderPreview(join(outDir, 'preview-floor.mp4'), `${scale},${tileGaps}`);
+
+  function renderPreview(file: string, filters: string) {
+    const args = ['-y', '-loglevel', 'error', '-framerate', String(anim.fps), '-i', join(framesDir, 'klatka_%04d.png')];
+    if (audioPath) args.push('-itsoffset', String(pkg.animation.audio?.offset ?? 0), '-i', audioPath, '-shortest');
+    args.push('-vf', filters, '-c:v', 'libx264', '-crf', '12', '-pix_fmt', 'yuv420p', file);
+    const result = spawnSync('ffmpeg', args, { stdio: 'inherit' });
+    if (result.status !== 0) throw new Error(`ffmpeg failed to render ${basename(file)}`);
+  }
 }
 
 main()?.catch((e: Error) => {

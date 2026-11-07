@@ -21,7 +21,8 @@ Output lands in `out/<name>/`:
 | -------------------------- | -------------------------------------------------------------------------- |
 | `klatki/klatka_NNNN.png`   | Every frame, 28 × 16 RGB.                                                  |
 | `<name>.zip`               | The same frames, flat – this is what we send.                              |
-| `preview.mp4`              | 560 × 320 nearest-neighbour preview (with music, if the package has it).   |
+| `preview.mp4`              | 560 × 320 nearest-neighbour preview (with music, if the package has it) – the one the school asked for. |
+| `preview-floor.mp4`        | Same, with thin black gaps between tiles so it looks like the real floor.  |
 | music file                 | Copied from the package, to send alongside.                                |
 
 The build also prints safety warnings (too-dark pixels, long full white, strobing) – see [FORMAT.md](FORMAT.md#safety-checks).
