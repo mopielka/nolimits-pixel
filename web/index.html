@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pixel – podgląd podłogi</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Pixel <span>podgląd podłogi</span></h1>
+      <select id="source" aria-label="Animacja"></select>
+      <label class="button">
+        Otwórz ZIP / JSON…
+        <input id="file" type="file" accept=".zip,.json" hidden />
+      </label>
+      <span id="status" role="status"></span>
+    </header>
+
+    <main id="stage"></main>
+
+    <aside>
+      <section>
+        <h2>Widok</h2>
+        <div id="views" class="views"></div>
+      </section>
+      <section>
+        <h2>Widz</h2>
+        <label>Wysokość oczu <output id="eye-out"></output>
+          <input id="eye" type="range" min="0.8" max="2" step="0.05" value="1.6" />
+        </label>
+        <label>Odległość od krawędzi <output id="dist-out"></output>
+          <input id="dist" type="range" min="0" max="3" step="0.1" value="0.8" />
+        </label>
+        <label class="check"><input id="bloom" type="checkbox" checked /> Poświata</label>
+      </section>
+      <section>
+        <h2>Uwagi</h2>
+        <ul id="warnings"></ul>
+      </section>
+      <p class="hint">Spacja – start/stop · ←/→ – klatka · 1–7 – widoki · upuść ZIP na okno</p>
+    </aside>
+
+    <footer>
+      <button id="play" aria-label="Odtwórz">▶</button>
+      <input id="scrub" type="range" min="0" value="0" step="1" aria-label="Klatka" />
+      <span id="time"></span>
+      <span id="scene"></span>
+      <select id="speed" aria-label="Prędkość">
+        <option value="0.25">0,25×</option>
+        <option value="0.5">0,5×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+      </select>
+      <label class="check"><input id="loop" type="checkbox" checked /> Pętla</label>
+    </footer>
+
+    <div id="drop" hidden>Upuść paczkę ZIP lub index.json</div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

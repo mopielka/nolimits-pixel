@@ -8,7 +8,9 @@
   "scripts": {
     "build": "node src/cli/build.ts",
     "test": "node --test 'test/**/*.test.ts'",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "web": "vite web",
+    "web:build": "vite build web",
   },
   "dependencies": {
     "fflate": "^0.8.3",
@@ -17,6 +19,9 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/pngjs": "^6.0.5",
-    "typescript": "^7.0.2"
+    "@types/three": "^0.187.0",
+    "three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6"
   }
 }

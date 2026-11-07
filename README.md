@@ -37,10 +37,16 @@ The build also prints safety warnings (too-dark pixels, long full white, strobin
 
 ## Code layout
 
-- `src/core/` – platform-independent: parsing `index.json`, rendering frames, the pixel font, safety checks, reading packages and ZIPs. Shared with the planned web player.
+- `src/core/` – platform-independent: parsing `index.json`, rendering frames, the pixel font, safety checks, reading packages and ZIPs. Shared by the CLI and the web player.
 - `src/cli/build.ts` – Node CLI that writes PNGs, the ZIP and the preview.
 - `test/` – `npm test`; `npm run typecheck` for types.
 
-## Planned: web player
+## Web player
 
-A browser tool that opens a package ZIP (or a delivered frames ZIP) and plays it on a simulated floor – top-down or in perspective as seen from the entrance, in either orientation – reusing `src/core`.
+```bash
+npm run web            # http://localhost:5173
+```
+
+Plays an animation on a 3D model of the floor in a dark dance hall (light from the floor spills onto the walls). Views: top-down landscape or portrait, from either long side, from either short side (the entrance), or free orbit with the mouse; eye height and distance from the floor are adjustable. Packages in `animations/` and `examples/` are listed automatically and reload when their files change; any package ZIP, `index.json` or delivered frames ZIP can be dropped onto the window. Music in a package plays in sync. `npm run web:build` writes a static site to `dist-web/`.
+
+Code: `web/src/floor-scene.ts` (three.js room, floor and cameras), `web/src/sources.ts` (loading packages and ZIPs in the browser through `src/core`), `web/src/main.ts` (UI and playback).
