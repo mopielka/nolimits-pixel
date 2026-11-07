@@ -161,6 +161,6 @@ Up/down refer to the image (row 0 is the top).
 
 The build warns (it doesn't fail) when the output breaks the guidance in [SPEC.md](SPEC.md):
 
-- **dark pixels** – lit pixels with every channel below 40 for more than 0.5 s (passing fades are fine), which look off or "dirty" on the floor;
+- **dark pixels** – lit pixels with every channel below 40 for more than 1 s (passing fades are fine), which look off or "dirty" on the floor;
 - **long full white** – at least half the floor near-white for more than 3 s;
 - **strobing** – more than 3 full-floor light/dark flashes within one second.

@@ -8,7 +8,7 @@ export interface LintWarning {
 }
 
 const DARK_LIMIT = 40;
-const DARK_MIN_SECONDS = 0.5;
+const DARK_MIN_SECONDS = 1;
 const WHITE_MIN_CHANNEL = 200;
 const WHITE_FLOOR_SHARE = 0.5;
 const WHITE_MAX_SECONDS = 3;
