@@ -1,5 +1,6 @@
 import { FRAMINGS, FloorScene, VIEWS, type Framing, type ViewId } from './floor-scene.ts';
 import { createHeadControl } from './head-control.ts';
+import { reloadIfStale } from './fresh.ts';
 import {
   canRead,
   canWatchFolders,
@@ -394,5 +395,6 @@ async function start() {
   save({ source: initial.id });
   await use(initial.load, initial.id, at);
 }
+reloadIfStale();
 start();
 requestAnimationFrame(tick);
