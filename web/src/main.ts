@@ -43,23 +43,41 @@ const ui = {
 const floor = new FloorScene($('stage'));
 const head = createHeadControl($('stage'), $('joystick'));
 
-/** Remembered across reloads so editing an animation keeps your place. */
-const saved = (() => {
+interface Saved {
+  source?: string;
+  view?: ViewId;
+  framing?: Framing;
+  eye?: number;
+  dist?: number;
+  bloom?: boolean;
+  speed?: string;
+  loop?: boolean;
+  time?: number;
+}
+
+/**
+ * Settings persist across visits; the playback position only within a tab's session, so a
+ * reload while editing keeps your place but coming back later starts from the beginning.
+ */
+const SETTINGS = { store: () => localStorage, key: 'pixel-player-settings' };
+const POSITION = { store: () => sessionStorage, key: 'pixel-player-position' };
+
+function load(where: typeof SETTINGS): Saved {
   try {
-    return JSON.parse(sessionStorage.getItem('pixel-player') ?? '{}') as {
-      source?: string;
-      view?: ViewId;
-      framing?: Framing;
-      time?: number;
-    };
+    return JSON.parse(where.store().getItem(where.key) ?? '{}') as Saved;
   } catch {
     return {};
   }
-})();
-function save(patch: Partial<typeof saved>) {
+}
+
+const saved: Saved = { ...load(SETTINGS), ...load(POSITION) };
+
+function save(patch: Saved) {
   Object.assign(saved, patch);
+  const { time, ...settings } = saved;
   try {
-    sessionStorage.setItem('pixel-player', JSON.stringify(saved));
+    SETTINGS.store().setItem(SETTINGS.key, JSON.stringify(settings));
+    POSITION.store().setItem(POSITION.key, JSON.stringify({ time }));
   } catch {
     // Storage unavailable (private mode) – nothing to remember.
   }
@@ -118,8 +136,15 @@ function onViewerChange() {
   ui.distOut.textContent = `${Number(ui.dist.value).toFixed(1)} m`;
   if (view !== 'free' && !view.startsWith('top')) floor.setView(view, viewOptions());
 }
-ui.eye.oninput = ui.dist.oninput = onViewerChange;
-ui.bloom.onchange = () => floor.setBloom(ui.bloom.checked);
+ui.eye.oninput = ui.dist.oninput = () => {
+  save({ eye: Number(ui.eye.value), dist: Number(ui.dist.value) });
+  onViewerChange();
+};
+ui.bloom.onchange = () => {
+  save({ bloom: ui.bloom.checked });
+  floor.setBloom(ui.bloom.checked);
+};
+ui.loop.onchange = () => save({ loop: ui.loop.checked });
 
 // --- playback --------------------------------------------------------------
 
@@ -166,7 +191,10 @@ function restart() {
 ui.play.onclick = () => (!playing && atEnd() ? restart() : setPlaying(!playing));
 ui.restart.onclick = restart;
 ui.scrub.oninput = () => seek(Number(ui.scrub.value) / fps());
-ui.speed.onchange = () => syncAudio(true);
+ui.speed.onchange = () => {
+  save({ speed: ui.speed.value });
+  syncAudio(true);
+};
 
 function showFrame() {
   if (!source) return;
@@ -388,6 +416,12 @@ window.addEventListener('keydown', (e) => {
 for (const [id, label] of Object.entries(FRAMINGS)) ui.framing.append(new Option(label, id));
 ui.framing.value = saved.framing && saved.framing in FRAMINGS ? saved.framing : 'fill';
 floor.setFraming(ui.framing.value as Framing);
+if (saved.eye !== undefined) ui.eye.value = String(saved.eye);
+if (saved.dist !== undefined) ui.dist.value = String(saved.dist);
+if (saved.bloom !== undefined) ui.bloom.checked = saved.bloom;
+if (saved.loop !== undefined) ui.loop.checked = saved.loop;
+if (saved.speed && [...ui.speed.options].some((o) => o.value === saved.speed)) ui.speed.value = saved.speed;
+floor.setBloom(ui.bloom.checked);
 onViewerChange();
 setView(view);
 
