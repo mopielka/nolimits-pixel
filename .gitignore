@@ -2,3 +2,9 @@ node_modules/
 out/
 .DS_Store
 dist-web/
+
+# Music is copyrighted and these repos are public; keep it local.
+*.mp3
+*.wav
+*.ogg
+*.m4a
