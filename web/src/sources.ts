@@ -58,30 +58,53 @@ export async function fromPackage(files: PackageFiles, title: string): Promise<P
   };
 }
 
-/** A ZIP of rendered frames (what we send to the school), played at 25 fps. */
+const AUDIO_FILE = /\.(mp3|wav|ogg|m4a)$/i;
+
+/**
+ * Rendered frames (the ZIP we send to the school) played at 25 fps, with the build's
+ * music file if it came along – it's already trimmed and faded to the animation.
+ */
 async function fromFrames(files: PackageFiles, title: string): Promise<PlaybackSource> {
   const names = [...files.keys()].filter((p) => /\.png$/i.test(p)).sort();
-  if (names.length === 0) throw new Error('The ZIP has neither index.json nor PNG frames');
+  if (names.length === 0) throw new Error('Brak index.json i klatek PNG – otwórz folder animacji albo jej ZIP');
   const frames = await Promise.all(
     names.map(async (n) => {
       const png = await decodePng(files.get(n)!);
       return fromRGBA(png.width, png.height, png.rgba);
     }),
   );
+  const music = [...files.keys()].find((p) => AUDIO_FILE.test(p));
+  const type = music && (AUDIO_TYPES[music.split('.').pop()!.toLowerCase()] ?? 'audio/mpeg');
   return {
     title,
     fps: 25,
     frameCount: frames.length,
     frameAt: (i) => frames[i],
-    sceneAt: (i) => names[i].split('/').pop(),
+    sceneAt: () => `gotowe klatki${music ? '' : ' (bez muzyki – dorzuć plik MP3)'}`,
+    audio: music
+      ? { url: URL.createObjectURL(new Blob([files.get(music)! as BlobPart], { type })), offset: 0, start: 0, fadeIn: 0, fadeOut: 0 }
+      : undefined,
   };
 }
 
-export async function fromFile(file: File): Promise<PlaybackSource> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const title = file.name.replace(/\.[^.]+$/, '');
-  if (/\.json$/i.test(file.name)) return fromPackage(new Map([['index.json', bytes]]), title);
-  const files = unzipPackage(bytes);
+/** A file with its path inside whatever folder or selection it came from. */
+export interface LocalFile {
+  path: string;
+  file: File;
+}
+
+/**
+ * Plays whatever the user hands over: an animation folder, its ZIP, a bare index.json,
+ * or rendered frames with or without their music. ZIPs are unpacked alongside loose files.
+ */
+export async function fromLocalFiles(entries: LocalFile[], title: string): Promise<PlaybackSource> {
+  const files: PackageFiles = new Map();
+  for (const { path, file } of entries) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (/\.zip$/i.test(path)) for (const [p, b] of unzipPackage(bytes)) files.set(p, b);
+    else if (entries.length === 1 && /\.json$/i.test(path)) files.set('index.json', bytes);
+    else files.set(path, bytes);
+  }
   const hasIndex = [...files.keys()].some((p) => /^([^/]+\/)?index\.json$/.test(p));
   return hasIndex ? fromPackage(files, title) : fromFrames(files, title);
 }

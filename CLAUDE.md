@@ -28,14 +28,14 @@ Read these before changing anything:
 
 - `src/core/` – everything that understands animations: `parse.ts` validates `index.json`, `render.ts` compiles it into `renderFrame(i)`, `layers.ts` draws keyframed layers, `font.ts` is the 5 px pixel font (with Polish letters), `lint.ts` checks the floor's safety rules, `package.ts` reads packages and ZIPs. It is shared by the CLI and the browser, so it must not use Node (`node:*`) or DOM APIs – platform code passes decoded images in.
 - `src/cli/build.ts` – Node-only: reads a package, writes PNGs, the ZIP and the previews.
-- `web/` – Vite + three.js player: `floor-scene.ts` (dark dance hall, the floor as a canvas texture, cameras for each view), `sources.ts` (bundled packages via `import.meta.glob`, dropped ZIP/JSON files), `main.ts` (UI, playback, music sync).
+- `web/` – Vite + three.js player: `floor-scene.ts` (dark dance hall, the floor as a canvas texture, cameras for each view), `sources.ts` (turns bundled packages, folders, ZIPs and loose files into something playable), `local-folder.ts` (folder picking, live re-reading via the File System Access API, remembering the folder), `main.ts` (UI, playback, music sync).
 - `animations/<name>/` – real animations. Complex ones are written as `generate.ts` (+ `sprites.ts` for pixel art) that writes `index.json`; **commit the generated `index.json`** – the build and the player only read that.
 - `examples/` – small packages: `demo` (every scene type), `layers` (movement in code: dots, a beating heart, a walking cat), `test-orientation` (the "UP" arrow frame the school asked for, red/green corner marks top-left/top-right).
 
 ## Making a new animation
 
 1. Create `animations/<name>/`. For a simple one, hand-write `index.json`; for anything with movement, start from `examples/layers/generate.ts` (helpers for fades and walk cycles, sprites swapped to change size, a tricolour cat).
-2. Run `npm run web` and keep it open while editing – it reloads on every change to `index.json` (`node --watch animations/<name>/generate.ts` regenerates it on every save).
+2. Keep a preview open while editing: `npm run web` (lists `animations/`), or the published player with **Otwórz folder…** on the animation's folder (Chrome/Edge reload it on every save). `node --watch animations/<name>/generate.ts` regenerates `index.json` on every save.
 3. **Look at the result, don't trust the numbers.** Render the frames (`npm run build`) and inspect key moments – overlaps are the usual bug: text touching a sprite, a dot next to a letter reading as an extra letter, a sprite crossing text. An upscaled contact sheet of a dozen frames is the quickest check.
 4. Stay within the floor's limits (all from SPEC.md; `lint` warns on the measurable ones):
    - letters are 5 px tall; about 5–7 fit across (`textWidth()` tells you exactly); two lines fit vertically with `\n`; longer text should scroll at 3–4 frames per pixel;

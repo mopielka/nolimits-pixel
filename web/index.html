@@ -10,9 +10,12 @@
     <header>
       <h1>Pixel <span>podgląd podłogi</span></h1>
       <select id="source" aria-label="Animacja"></select>
+      <button id="resume" hidden></button>
+      <button id="open-folder">Otwórz folder…</button>
+      <input id="folder-input" type="file" webkitdirectory hidden />
       <label class="button">
-        Otwórz ZIP / JSON…
-        <input id="file" type="file" accept=".zip,.json" hidden />
+        Otwórz pliki…
+        <input id="file" type="file" accept=".zip,.json,.mp3,.wav,.ogg,.m4a,.png" multiple hidden />
       </label>
       <span id="status" role="status"></span>
     </header>
@@ -41,7 +44,7 @@
         <h2>Uwagi</h2>
         <ul id="warnings"></ul>
       </section>
-      <p class="hint">Spacja – start/stop · ←/→ – klatka · 1–7 – widoki · upuść ZIP na okno</p>
+      <p class="hint">Spacja – start/stop · ←/→ – klatka · 1–7 – widoki · upuść folder lub ZIP na okno</p>
     </aside>
 
     <footer>
@@ -58,7 +61,7 @@
       <label class="check"><input id="loop" type="checkbox" checked /> Pętla</label>
     </footer>
 
-    <div id="drop" hidden>Upuść paczkę ZIP lub index.json</div>
+    <div id="drop" hidden>Upuść folder animacji, jej ZIP albo pliki (np. klatki + MP3)</div>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

@@ -1,9 +1,23 @@
 import { FRAMINGS, FloorScene, VIEWS, type Framing, type ViewId } from './floor-scene.ts';
-import { bundled, fromFile, type PlaybackSource } from './sources.ts';
+import {
+  canRead,
+  canWatchFolders,
+  filesFromDirectoryInput,
+  filesFromEntry,
+  packagesInFiles,
+  packagesInHandle,
+  rememberFolder,
+  rememberedFolder,
+  type FolderPackage,
+} from './local-folder.ts';
+import { bundled, fromLocalFiles, type PlaybackSource } from './sources.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const ui = {
   source: $<HTMLSelectElement>('source'),
+  openFolder: $<HTMLButtonElement>('open-folder'),
+  folderInput: $<HTMLInputElement>('folder-input'),
+  resume: $<HTMLButtonElement>('resume'),
   file: $<HTMLInputElement>('file'),
   status: $('status'),
   views: $('views'),
@@ -189,8 +203,8 @@ function showWarnings(src: PlaybackSource) {
   }, 50);
 }
 
-async function use(load: () => Promise<PlaybackSource>, label: string, keepTime = false) {
-  setStatus(`Wczytuję ${label}…`);
+async function use(load: () => Promise<PlaybackSource>, label: string, at = 0, quiet = false): Promise<boolean> {
+  if (!quiet) setStatus(`Wczytuję ${label}…`);
   try {
     const next = await load();
     audio?.pause();
@@ -199,30 +213,113 @@ async function use(load: () => Promise<PlaybackSource>, label: string, keepTime 
     audio = next.audio ? new Audio(next.audio.url) : undefined;
     lastFrame = -1;
     ui.scrub.max = String(next.frameCount - 1);
-    seek(keepTime ? (saved.time ?? 0) : 0);
-    setStatus(`${next.title} · ${next.frameCount} klatek${next.audio ? ' · z muzyką' : ''}`);
+    seek(at);
+    setStatus(`${next.title} · ${next.frameCount} klatek${next.audio ? ' · z muzyką' : ''}${watched ? ' · ● na żywo' : ''}`);
     showWarnings(next);
+    return true;
   } catch (e) {
     setStatus((e as Error).message, true);
+    return false;
   }
 }
 
+// --- local folders -------------------------------------------------------------
+
+const FOLDER = 'folder:';
+let folderPackages: FolderPackage[] = [];
+/** The open folder animation, re-read whenever its files change. */
+let watched: { pkg: FolderPackage; signature: string } | undefined;
+
+const readFolder = (pkg: FolderPackage) => async () => fromLocalFiles(await pkg.read(), pkg.name);
+
+async function openFolderPackage(index: number, at = 0) {
+  const pkg = folderPackages[index];
+  ui.source.value = FOLDER + index;
+  save({ source: FOLDER + pkg.name });
+  const signature = await pkg.signature?.();
+  watched = signature === undefined ? undefined : { pkg, signature };
+  await use(readFolder(pkg), pkg.name, at);
+}
+
+async function openFolder(rootName: string, packages: FolderPackage[]) {
+  if (packages.length === 0) {
+    setStatus(`W folderze „${rootName}” nie ma index.json (ani w jego podfolderach)`, true);
+    return;
+  }
+  folderPackages = packages;
+  ui.source.querySelector('optgroup.folder')?.remove();
+  const group = Object.assign(document.createElement('optgroup'), { label: `📁 ${rootName}`, className: 'folder' });
+  packages.forEach((p, i) => group.append(new Option(p.name, FOLDER + i)));
+  ui.source.prepend(group);
+  const wanted = saved.source?.startsWith(FOLDER) ? saved.source.slice(FOLDER.length) : undefined;
+  const index = Math.max(0, packages.findIndex((p) => p.name === wanted));
+  await openFolderPackage(index, packages[index].name === wanted ? (saved.time ?? 0) : 0);
+}
+
+async function openFolderHandle(handle: FileSystemDirectoryHandle) {
+  rememberFolder(handle);
+  ui.resume.hidden = true;
+  await openFolder(handle.name, await packagesInHandle(handle));
+}
+
+async function openFiles(files: File[]) {
+  if (files.length === 0) return;
+  watched = undefined;
+  ui.source.value = '';
+  const title = files[0].name.replace(/\.[^.]+$/, '');
+  await use(() => fromLocalFiles(files.map((file) => ({ path: file.name, file })), title), files[0].name);
+}
+
+let checking = false;
+setInterval(async () => {
+  if (!watched?.pkg.signature || checking) return;
+  checking = true;
+  const current = watched;
+  try {
+    const signature = await current.pkg.signature!();
+    // Only accept the new state once it loads – a half-written index.json is retried next tick.
+    if (signature !== current.signature && (await use(readFolder(current.pkg), current.pkg.name, time, true))) {
+      current.signature = signature;
+    }
+  } catch {
+    watched = undefined;
+    setStatus('Brak dostępu do folderu – otwórz go ponownie', true);
+  } finally {
+    checking = false;
+  }
+}, 1000);
+
+ui.openFolder.onclick = async () => {
+  if (!canWatchFolders) return ui.folderInput.click();
+  try {
+    await openFolderHandle(await window.showDirectoryPicker!({ id: 'pixel-animations', mode: 'read' }));
+  } catch (e) {
+    if ((e as Error).name !== 'AbortError') setStatus((e as Error).message, true);
+  }
+};
+ui.folderInput.onchange = () => {
+  if (!ui.folderInput.files?.length) return;
+  const { rootName, files } = filesFromDirectoryInput(ui.folderInput.files);
+  openFolder(rootName, packagesInFiles(rootName, files));
+};
+ui.file.onchange = () => openFiles([...(ui.file.files ?? [])]);
+if (!canWatchFolders) ui.openFolder.title = 'Podgląd na żywo po zapisaniu plików działa w Chrome i Edge';
+
+// --- bundled packages and the source list ----------------------------------
+
 for (const pkg of bundled) ui.source.append(new Option(pkg.id, pkg.id));
-ui.source.append(new Option('— plik z dysku —', '', false, false));
-ui.source.lastElementChild!.setAttribute('disabled', '');
 
 ui.source.onchange = () => {
-  const pkg = bundled.find((p) => p.id === ui.source.value);
+  const value = ui.source.value;
+  if (value.startsWith(FOLDER)) return void openFolderPackage(Number(value.slice(FOLDER.length)));
+  const pkg = bundled.find((p) => p.id === value);
   if (!pkg) return;
+  watched = undefined;
   save({ source: pkg.id, time: 0 });
   use(pkg.load, pkg.id);
 };
 
-async function openFile(file: File) {
-  ui.source.value = '';
-  await use(() => fromFile(file), file.name);
-}
-ui.file.onchange = () => ui.file.files?.[0] && openFile(ui.file.files[0]);
+// --- drag and drop ---------------------------------------------------------
 
 let dragDepth = 0;
 window.addEventListener('dragenter', (e) => {
@@ -238,8 +335,21 @@ window.addEventListener('drop', (e) => {
   e.preventDefault();
   dragDepth = 0;
   ui.drop.hidden = true;
-  const file = e.dataTransfer?.files[0];
-  if (file) openFile(file);
+  // Both APIs only work while the event is being handled, so grab everything up front.
+  const items = [...(e.dataTransfer?.items ?? [])].filter((item) => item.kind === 'file');
+  const files = [...(e.dataTransfer?.files ?? [])];
+  if (items[0]?.getAsFileSystemHandle) {
+    const handles = items.map((item) => item.getAsFileSystemHandle!());
+    Promise.all(handles).then(async (all) => {
+      const dir = all.find((h) => h?.kind === 'directory');
+      if (dir) return openFolderHandle(dir as FileSystemDirectoryHandle);
+      return openFiles(await Promise.all(all.filter((h) => h?.kind === 'file').map((h) => (h as FileSystemFileHandle).getFile())));
+    });
+    return;
+  }
+  const dir = items.map((item) => item.webkitGetAsEntry()).find((entry) => entry?.isDirectory) as FileSystemDirectoryEntry | undefined;
+  if (dir) filesFromEntry(dir).then((all) => openFolder(dir.name, packagesInFiles(dir.name, all)));
+  else openFiles(files);
 });
 
 window.addEventListener('keydown', (e) => {
@@ -256,15 +366,28 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-const initial = bundled.find((p) => p.id === saved.source) ?? bundled.find((p) => p.id === 'examples/layers') ?? bundled[0];
 for (const [id, label] of Object.entries(FRAMINGS)) ui.framing.append(new Option(label, id));
 ui.framing.value = saved.framing && saved.framing in FRAMINGS ? saved.framing : 'fill';
 floor.setFraming(ui.framing.value as Framing);
 onViewerChange();
 setView(view);
-if (initial) {
+
+async function start() {
+  const remembered = canWatchFolders ? await rememberedFolder() : undefined;
+  if (remembered) {
+    ui.resume.textContent = `📁 Wznów: ${remembered.name}`;
+    ui.resume.hidden = false;
+    ui.resume.onclick = async () => {
+      if (await canRead(remembered, true)) await openFolderHandle(remembered);
+    };
+    if (saved.source?.startsWith(FOLDER) && (await canRead(remembered, false))) return openFolderHandle(remembered);
+  }
+  const initial = bundled.find((p) => p.id === saved.source) ?? bundled.find((p) => p.id === 'examples/layers') ?? bundled[0];
+  if (!initial) return;
   ui.source.value = initial.id;
+  const at = saved.source === initial.id ? (saved.time ?? 0) : 0;
   save({ source: initial.id });
-  use(initial.load, initial.id, true);
+  await use(initial.load, initial.id, at);
 }
+start();
 requestAnimationFrame(tick);
