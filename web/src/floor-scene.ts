@@ -50,6 +50,30 @@ const HUMAN = { aspect: 1.5, horizontalFov: 120 };
 /** How far the head can turn from the view's resting direction, in radians. */
 const HEAD = { yaw: THREE.MathUtils.degToRad(70), pitchUp: THREE.MathUtils.degToRad(35), pitchDown: THREE.MathUtils.degToRad(45) };
 
+/**
+ * Glow around lit tiles. three.js's bloom thresholds on perceived luminance, which weighs green
+ * at 72 % and red at 21 %, so a full red tile never glowed while cyan and white did. Real LED
+ * tiles in a dark room halo whenever a channel is driven hard, whatever its hue, so the threshold
+ * is on the strongest channel (in linear light); white still glows most as all three add up.
+ */
+const BLOOM = { strength: 0.45, radius: 0.35, threshold: 0.35, softness: 0.4 };
+
+const MAX_CHANNEL_HIGH_PASS = /* glsl */ `
+  uniform sampler2D tDiffuse;
+  uniform vec3 defaultColor;
+  uniform float defaultOpacity;
+  uniform float luminosityThreshold;
+  uniform float smoothWidth;
+  varying vec2 vUv;
+
+  void main() {
+    vec4 texel = texture2D(tDiffuse, vUv);
+    float drive = max(texel.r, max(texel.g, texel.b));
+    float alpha = smoothstep(luminosityThreshold, luminosityThreshold + smoothWidth, drive);
+    gl_FragColor = mix(vec4(defaultColor, defaultOpacity), texel, alpha);
+  }
+`;
+
 export interface ViewOptions {
   /** Viewer's eye height above the floor, metres. */
   eyeHeight: number;
@@ -128,7 +152,10 @@ export class FloorScene {
 
     this.composer = new EffectComposer(this.renderer);
     this.renderPass = new RenderPass(this.scene, this.camera);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.3, 0.25, 0.6);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), BLOOM.strength, BLOOM.radius, BLOOM.threshold);
+    // A tile glows according to how hard its LEDs are driven, not how bright the colour looks to the eye.
+    this.bloom.materialHighPassFilter.uniforms.smoothWidth.value = BLOOM.softness;
+    this.bloom.materialHighPassFilter.fragmentShader = MAX_CHANNEL_HIGH_PASS;
     this.composer.addPass(this.renderPass);
     this.composer.addPass(this.bloom);
     this.vision = new ShaderPass(HumanVisionShader);
