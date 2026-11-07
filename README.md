@@ -49,4 +49,6 @@ npm run web            # http://localhost:5173
 
 Plays an animation on a 3D model of the floor in a dark dance hall (light from the floor spills onto the walls). Views: top-down landscape or portrait, from either long side, from either short side (the entrance), or free orbit with the mouse; eye height and distance from the floor are adjustable (locked in top-down and free views), and the frame can fill the panel or match human proportions (about 90° across at 3:2). Packages in `animations/` and `examples/` are listed automatically and reload when their files change; any package ZIP, `index.json` or delivered frames ZIP can be dropped onto the window. Music in a package plays in sync. `npm run web:build` writes a static site to `dist-web/`.
 
+**Public site:** `npm run web:deploy` builds it and force-pushes it to the public repo `mopielka/nolimits-pixel-player`, served by GitHub Pages at https://mopielka.github.io/nolimits-pixel-player/. This repo stays private; the published bundle contains the animations but the script refuses to publish music files.
+
 Code: `web/src/floor-scene.ts` (three.js room, floor and cameras), `web/src/sources.ts` (loading packages and ZIPs in the browser through `src/core`), `web/src/main.ts` (UI and playback).
