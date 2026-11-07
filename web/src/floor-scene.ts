@@ -56,7 +56,7 @@ const HEAD = { yaw: THREE.MathUtils.degToRad(70), pitchUp: THREE.MathUtils.degTo
  * tiles in a dark room halo whenever a channel is driven hard, whatever its hue, so the threshold
  * is on the strongest channel (in linear light); white still glows most as all three add up.
  */
-const BLOOM = { strength: 0.45, radius: 0.35, threshold: 0.35, softness: 0.4 };
+const BLOOM = { strength: 0.18, radius: 0.35, threshold: 0.35, softness: 0.4 };
 
 const MAX_CHANNEL_HIGH_PASS = /* glsl */ `
   uniform sampler2D tDiffuse;
