@@ -4,7 +4,7 @@
  */
 
 /** Seconds for the head to come most of the way back to centre after letting go. */
-const RETURN_SECONDS = 1.5;
+const RETURN_SECONDS = 2.5;
 /** Drag distance, as a fraction of the stage width, for a full turn. */
 const DRAG_FULL_TURN = 0.6;
 
@@ -34,9 +34,10 @@ export function createHeadControl(stage: HTMLElement, joystick: HTMLElement): He
   });
   stage.addEventListener('pointermove', (e) => {
     if (!dragFrom) return;
+    // "Natural" direction: you drag the scene, so the head turns the opposite way.
     const scale = stage.clientWidth * DRAG_FULL_TURN;
-    x = clamp(dragFrom.x + (e.clientX - dragFrom.px) / scale);
-    y = clamp(dragFrom.y + (e.clientY - dragFrom.py) / scale);
+    x = clamp(dragFrom.x - (e.clientX - dragFrom.px) / scale);
+    y = clamp(dragFrom.y - (e.clientY - dragFrom.py) / scale);
   });
   const endDrag = () => {
     dragFrom = undefined;
