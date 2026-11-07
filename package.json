@@ -11,6 +11,7 @@
     "typecheck": "tsc",
     "web": "vite web",
     "web:build": "vite build web",
+    "web:deploy": "scripts/deploy-web.sh"
   },
   "dependencies": {
     "fflate": "^0.8.3",
