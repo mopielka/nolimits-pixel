@@ -1,6 +1,17 @@
 import { isSupported } from './font.ts';
 import { parseColor } from './image.ts';
-import { TRANSITION_TYPES, type Animation, type Scene, type Transition } from './types.ts';
+import {
+  EASINGS,
+  TRANSITION_TYPES,
+  type Animation,
+  type Easing,
+  type Keyframe,
+  type Layer,
+  type LayerProps,
+  type Scene,
+  type SpriteDef,
+  type Transition,
+} from './types.ts';
 
 type Json = Record<string, unknown>;
 
@@ -118,9 +129,90 @@ function parseScene(v: unknown, path: string): Scene {
         framesPerPixel: optNumber(v, 'framesPerPixel', path, { int: true, min: 1 }),
       };
     }
+    case 'layers': {
+      needsLength();
+      if (!Array.isArray(v.layers)) throw new FormatError(`${path}.layers`, 'must be an array');
+      return {
+        ...base,
+        type: 'layers',
+        background: optColor(v, 'background', path),
+        layers: v.layers.map((l, i) => parseLayer(l, `${path}.layers[${i}]`)),
+      };
+    }
     default:
-      throw new FormatError(`${path}.type`, 'must be one of color, image, sequence, pixels, text');
+      throw new FormatError(`${path}.type`, 'must be one of color, image, sequence, pixels, text, layers');
   }
+}
+
+function parseLayerProps(v: Json, path: string): LayerProps {
+  const text = v.text === undefined ? undefined : reqString(v, 'text', path);
+  const bad = text && [...text].find((c) => !isSupported(c));
+  if (bad) throw new FormatError(`${path}.text`, `unsupported character "${bad}"`);
+  return {
+    x: optNumber(v, 'x', path),
+    y: optNumber(v, 'y', path),
+    opacity: optNumber(v, 'opacity', path, { min: 0 }),
+    color: optColor(v, 'color', path),
+    sprite: v.sprite === undefined ? undefined : reqString(v, 'sprite', path),
+    text,
+  };
+}
+
+function parseLayer(v: unknown, path: string): Layer {
+  if (!isObject(v)) throw new FormatError(path, 'must be an object');
+  let rect: Layer['rect'];
+  if (v.rect !== undefined) {
+    if (!Array.isArray(v.rect) || v.rect.length !== 2 || v.rect.some((n) => !Number.isInteger(n) || n < 1)) {
+      throw new FormatError(`${path}.rect`, 'must be [width, height] in whole pixels');
+    }
+    rect = v.rect as [number, number];
+  }
+  if (v.anchor !== undefined && v.anchor !== 'top-left' && v.anchor !== 'center') {
+    throw new FormatError(`${path}.anchor`, 'must be "top-left" or "center"');
+  }
+  if (v.keyframes !== undefined && !Array.isArray(v.keyframes)) {
+    throw new FormatError(`${path}.keyframes`, 'must be an array');
+  }
+  const keyframes = (v.keyframes as unknown[] | undefined)?.map((k, i): Keyframe => {
+    const kpath = `${path}.keyframes[${i}]`;
+    if (!isObject(k)) throw new FormatError(kpath, 'must be an object');
+    const t = optNumber(k, 't', kpath, { min: 0 });
+    if (t === undefined) throw new FormatError(`${kpath}.t`, 'is required');
+    if (k.ease !== undefined && !EASINGS.includes(k.ease as Easing)) {
+      throw new FormatError(`${kpath}.ease`, `must be one of ${EASINGS.join(', ')}`);
+    }
+    return { ...parseLayerProps(k, kpath), t, ease: k.ease as Easing | undefined };
+  });
+  return {
+    ...parseLayerProps(v, path),
+    name: typeof v.name === 'string' ? v.name : undefined,
+    rect,
+    anchor: v.anchor as Layer['anchor'],
+    from: optNumber(v, 'from', path, { min: 0 }),
+    to: optNumber(v, 'to', path, { min: 0 }),
+    keyframes,
+  };
+}
+
+function parseSprites(v: unknown): Record<string, SpriteDef> {
+  if (v === undefined) return {};
+  if (!isObject(v)) throw new FormatError('.sprites', 'must be an object');
+  const sprites: Record<string, SpriteDef> = {};
+  for (const [name, def] of Object.entries(v)) {
+    const path = `.sprites.${name}`;
+    if (!isObject(def) || !isObject(def.palette)) throw new FormatError(path, 'needs "palette" and "rows"');
+    const palette: Record<string, string> = {};
+    for (const key of Object.keys(def.palette)) palette[key] = optColor(def.palette, key, `${path}.palette`)!;
+    if (!Array.isArray(def.rows) || def.rows.length === 0 || def.rows.some((r) => typeof r !== 'string')) {
+      throw new FormatError(`${path}.rows`, 'must be a non-empty array of strings');
+    }
+    def.rows.forEach((row: string, y: number) => {
+      const unknown = [...row].find((c) => c !== '.' && c !== ' ' && !(c in palette));
+      if (unknown) throw new FormatError(`${path}.rows[${y}]`, `uses "${unknown}" which is not in the palette`);
+    });
+    sprites[name] = { palette, rows: def.rows as string[] };
+  }
+  return sprites;
 }
 
 export function parseAnimation(json: unknown): Animation {
@@ -142,6 +234,7 @@ export function parseAnimation(json: unknown): Animation {
     fps: optNumber(json, 'fps', '', { min: 1 }) ?? 25,
     background: optColor(json, 'background', '') ?? '#000000',
     audio,
+    sprites: parseSprites(json.sprites),
     scenes: json.scenes.map((s, i) => parseScene(s, `.scenes[${i}]`)),
   };
 }

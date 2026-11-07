@@ -8,6 +8,7 @@ export interface LintWarning {
 }
 
 const DARK_LIMIT = 40;
+const DARK_MIN_SECONDS = 0.5;
 const WHITE_MIN_CHANNEL = 200;
 const WHITE_FLOOR_SHARE = 0.5;
 const WHITE_MAX_SECONDS = 3;
@@ -15,14 +16,14 @@ const FLASH_LUMINANCE_DELTA = 0.2;
 const MAX_FLASHES_PER_SECOND = 3;
 
 function stats(img: Image) {
-  let dark = 0;
+  const pixels = img.width * img.height;
+  const dark = new Uint8Array(pixels);
   let white = 0;
   let luminance = 0;
-  const pixels = img.width * img.height;
   for (let i = 0; i < img.data.length; i += 3) {
     const [r, g, b] = [img.data[i], img.data[i + 1], img.data[i + 2]];
     const max = Math.max(r, g, b);
-    if (max > 0 && max < DARK_LIMIT) dark++;
+    if (max > 0 && max < DARK_LIMIT) dark[i / 3] = 1;
     if (Math.min(r, g, b) >= WHITE_MIN_CHANNEL) white++;
     luminance += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
   }
@@ -56,21 +57,19 @@ export function lint(anim: CompiledAnimation): LintWarning[] {
   }
 
   const levels: number[] = [];
+  // Fades pass through dark levels briefly, which the spec accepts; only flag pixels that stay dark.
+  const darkRun = new Uint16Array(anim.width * anim.height);
+  const darkMinFrames = Math.round(fps * DARK_MIN_SECONDS);
   let firstDark = -1;
-  let darkFrames = 0;
   let whiteRun = 0;
   let whiteReported = false;
-
-  // Fades necessarily pass through dark levels; the spec accepts that.
-  const inFade = (f: number) =>
-    anim.scenes.some((s) => s.transition === 'fade' && f >= s.start && f < s.start + s.transitionFrames);
 
   for (let f = 0; f < frameCount; f++) {
     const s = stats(anim.renderFrame(f));
     levels.push(s.luminance);
-    if (s.dark > 0 && !inFade(f)) {
-      darkFrames++;
-      if (firstDark < 0) firstDark = f;
+    for (let p = 0; p < darkRun.length; p++) {
+      darkRun[p] = s.dark[p] ? darkRun[p] + 1 : 0;
+      if (firstDark < 0 && darkRun[p] >= darkMinFrames) firstDark = f - darkMinFrames + 1;
     }
     whiteRun = s.whiteShare >= WHITE_FLOOR_SHARE ? whiteRun + 1 : 0;
     if (!whiteReported && whiteRun > WHITE_MAX_SECONDS * fps) {
@@ -83,11 +82,11 @@ export function lint(anim: CompiledAnimation): LintWarning[] {
     }
   }
 
-  if (darkFrames > 0) {
+  if (firstDark >= 0) {
     warnings.push({
       kind: 'dark',
       frame: firstDark,
-      message: `${darkFrames} frame(s) have lit pixels darker than ${DARK_LIMIT}/255 (first at ${time(firstDark)}) – they look off or dirty on the floor`,
+      message: `Lit pixels stay darker than ${DARK_LIMIT}/255 for over ${DARK_MIN_SECONDS} s from ${time(firstDark)} – they look off or dirty on the floor`,
     });
   }
 

@@ -1,5 +1,6 @@
-import { FONT_HEIGHT, drawText, textWidth } from './font.ts';
+import { drawTextBlock, textHeight, textWidth } from './font.ts';
 import { createImage, fitToCanvas, parseColor, setPixel } from './image.ts';
+import { layersRenderer } from './layers.ts';
 import type { Animation, Image, Scene, TransitionType } from './types.ts';
 
 export interface CompiledScene {
@@ -76,11 +77,11 @@ function sceneRenderer(scene: Scene, anim: Animation, images: ImageMap, label: s
     case 'text': {
       const color = parseColor(scene.color ?? '#ffffff');
       const background = parseColor(scene.background ?? '#000000');
-      const y = scene.y ?? Math.floor((H - FONT_HEIGHT) / 2);
+      const y = scene.y ?? Math.floor((H - textHeight(scene.text)) / 2);
       const tw = textWidth(scene.text);
       if (scene.scroll === false) {
         const img = createImage(W, H, background);
-        drawText(img, scene.text, Math.floor((W - tw) / 2), y, color);
+        drawTextBlock(img, scene.text, Math.floor((W - tw) / 2), y, color);
         return constant(img);
       }
       const fpp = scene.framesPerPixel ?? 4;
@@ -89,11 +90,14 @@ function sceneRenderer(scene: Scene, anim: Animation, images: ImageMap, label: s
         naturalFrames: (W + tw - 1) * fpp,
         render: (local) => {
           const img = createImage(W, H, background);
-          drawText(img, scene.text, W - 1 - Math.floor(local / fpp), y, color);
+          drawTextBlock(img, scene.text, W - 1 - Math.floor(local / fpp), y, color);
           return img;
         },
       };
     }
+
+    case 'layers':
+      return { render: layersRenderer(scene, anim, label) };
   }
 }
 

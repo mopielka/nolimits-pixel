@@ -81,7 +81,7 @@ test('lint flags strobing, long white and too-dark pixels', () => {
   const kinds = (scenes: unknown[]) => lint(compile(anim(scenes))).map((w) => w.kind);
   assert.deepEqual(kinds(strobe), ['strobe']);
   assert.deepEqual(kinds([{ type: 'color', color: '#ffffff', duration: 4 }]), ['white']);
-  assert.deepEqual(kinds([{ type: 'color', color: '#202020', frames: 1 }]), ['dark']);
+  assert.deepEqual(kinds([{ type: 'color', color: '#202020', duration: 1 }]), ['dark']);
   assert.deepEqual(kinds([{ type: 'color', color: '#ff0000', duration: 4 }]), []);
 });
 
@@ -90,4 +90,67 @@ test('packages zipped inside a folder are read from that folder', async () => {
   const files = unzipPackage(zipSync({ 'my-anim/index.json': index }));
   const pkg = await readPackage(files, async () => assert.fail('no images to decode'));
   assert.equal(pkg.animation.scenes.length, 1);
+});
+
+test('multi-line text centres each line and the block', () => {
+  const c = compile(anim([{ type: 'text', text: 'KOCHAM\nCIĘ', scroll: false, frames: 1 }]));
+  const img = c.renderFrame(0);
+  assert.deepEqual(pixel(img, 1, 1), [255, 255, 255], 'K starts at x=1, y=1');
+  assert.deepEqual(pixel(img, 8, 10), [255, 255, 255], 'C of the second line starts at x=8, y=9');
+  assert.deepEqual(pixel(img, 18, 14), [255, 255, 255], 'Ę ogonek below the second line');
+});
+
+test('layer keyframes interpolate position with easing and switch sprites', () => {
+  const c = compile(
+    anim(
+      [
+        {
+          type: 'layers',
+          duration: 2,
+          layers: [
+            {
+              sprite: 'dot',
+              x: 0,
+              y: 0,
+              keyframes: [
+                { t: 1, x: 20, ease: 'linear' },
+                { t: 1.5, sprite: 'big' },
+              ],
+            },
+          ],
+        },
+      ],
+      { sprites: { dot: { palette: { o: '#ff0000' }, rows: ['o'] }, big: { palette: { o: '#00ff00' }, rows: ['oo', 'oo'] } } },
+    ),
+  );
+  assert.deepEqual(pixel(c.renderFrame(0), 0, 0), [255, 0, 0]);
+  assert.deepEqual(pixel(c.renderFrame(12), 10, 0), [255, 0, 0], 'halfway at t=0.48 s → x≈10');
+  assert.deepEqual(pixel(c.renderFrame(30), 20, 0), [255, 0, 0], 'holds after the last x keyframe');
+  assert.deepEqual(pixel(c.renderFrame(40), 21, 1), [0, 255, 0], 'sprite switched at t=1.5 s');
+});
+
+test('centred layers with opacity blend over what is below', () => {
+  const c = compile(
+    anim([
+      {
+        type: 'layers',
+        frames: 1,
+        background: '#000000',
+        layers: [
+          { rect: [28, 16], color: '#0000ff' },
+          { rect: [2, 2], color: '#ff0000', x: 14, y: 8, anchor: 'center', opacity: 0.5 },
+        ],
+      },
+    ]),
+  );
+  const img = c.renderFrame(0);
+  assert.deepEqual(pixel(img, 13, 7), [128, 0, 128]);
+  assert.deepEqual(pixel(img, 12, 7), [0, 0, 255]);
+});
+
+test('layers reject unknown sprites', () => {
+  assert.throws(
+    () => compile(anim([{ type: 'layers', frames: 1, layers: [{ sprite: 'nope' }] }])),
+    /unknown sprite "nope"/,
+  );
 });

@@ -71,7 +71,7 @@ function normalise(ch: string): string {
 
 export function isSupported(ch: string): boolean {
   const c = normalise(ch);
-  return c === ' ' || c in GLYPHS || c in ACCENTED;
+  return c === ' ' || c === '\n' || c in GLYPHS || c in ACCENTED;
 }
 
 function glyphWidth(c: string): number {
@@ -79,10 +79,30 @@ function glyphWidth(c: string): number {
   return GLYPHS[ACCENTED[c]?.base ?? c][0].length;
 }
 
+/** Leaves room for the next line's accents below the previous line's ogoneks. */
+export const LINE_HEIGHT = FONT_HEIGHT + 3;
+
 export function textWidth(text: string): number {
-  const chars = [...text].map(normalise);
+  return Math.max(...text.split('\n').map(lineWidth));
+}
+
+function lineWidth(line: string): number {
+  const chars = [...line].map(normalise);
   if (chars.length === 0) return 0;
   return chars.reduce((w, c) => w + glyphWidth(c), 0) + LETTER_SPACING * (chars.length - 1);
+}
+
+/** Height of the letter bodies of a (possibly multi-line) text, excluding accents. */
+export function textHeight(text: string): number {
+  return (text.split('\n').length - 1) * LINE_HEIGHT + FONT_HEIGHT;
+}
+
+/** Draws text whose block starts at (x, y), centring each line within the widest one. */
+export function drawTextBlock(img: Image, text: string, x: number, y: number, color: RGB): void {
+  const block = textWidth(text);
+  text.split('\n').forEach((line, i) => {
+    drawText(img, line, x + Math.floor((block - lineWidth(line)) / 2), y + i * LINE_HEIGHT, color);
+  });
 }
 
 /**

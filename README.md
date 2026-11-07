@@ -32,6 +32,9 @@ The build also prints safety warnings (too-dark pixels, long full white, strobin
 - `examples/test-orientation` – the single "UP" test frame the school asked for; red marks the top-left corner, green the top-right.
 - `examples/demo` – every scene type and several transitions.
 
+## Animations
+
+
 ## Code layout
 
 - `src/core/` – platform-independent: parsing `index.json`, rendering frames, the pixel font, safety checks, reading packages and ZIPs. Shared with the planned web player.

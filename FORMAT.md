@@ -101,7 +101,48 @@ Exactly `height` rows of exactly `width` characters. `.` and space are black; ev
 | `scroll`         | `true`    | Scroll right → left. `false` = static, centred (needs a duration). |
 | `framesPerPixel` | `4`       | Scroll speed: frames per 1 px step (spec recommends 3–4).      |
 
+Use `\n` for several lines: each line is centred within the widest one, 8 rows apart (room for the next line's accents). Two lines fit the 16-row floor, e.g. `"KOCHAM\nCIĘ"`.
+
 A scrolling text's natural length runs from its first column appearing at the right edge to its last column at the left edge. The 5 px font covers A–Z, Polish letters (Ą Ć Ę Ł Ń Ó Ś Ź Ż), digits, `. , ! ? - + : '` and `♥`. Lowercase is drawn as uppercase.
+
+### `layers` – moving things
+
+A scene built from layers drawn bottom to top over `background` (defaults to the animation's). Each layer is a **sprite** (named pixel art from the top-level `sprites`), a **text**, or a **rect**, and can move, fade and change over time with keyframes.
+
+```json
+{
+  "sprites": {
+    "dot": { "palette": { "o": "#ff4fa3" }, "rows": ["oo", "oo"] }
+  },
+  "scenes": [
+    {
+      "type": "layers",
+      "duration": 6,
+      "layers": [
+        { "sprite": "dot", "x": 2, "y": 12, "keyframes": [{ "t": 3, "x": 24, "y": 2, "ease": "in-out" }] },
+        { "text": "17.07", "x": 14, "y": 8, "anchor": "center", "from": 3.5, "opacity": 0,
+          "keyframes": [{ "t": 3.5, "opacity": 0 }, { "t": 4.5, "opacity": 1 }] }
+      ]
+    }
+  ]
+}
+```
+
+| Field       | Default    | Meaning                                                                            |
+| ----------- | ---------- | ---------------------------------------------------------------------------------- |
+| `sprite`    | –          | Name of a sprite in `sprites`.                                                     |
+| `text`      | –          | Text in the pixel font (multi-line with `\n`).                                     |
+| `rect`      | –          | `[width, height]` filled with `color`.                                             |
+| `x`, `y`    | `0`        | Position in pixels (rounded when drawn).                                           |
+| `anchor`    | `top-left` | `center` makes `x`, `y` the middle of the layer (for text: of the letter bodies).  |
+| `color`     | `#ffffff`  | Text / rect colour. Sprites keep their palette.                                    |
+| `opacity`   | `1`        | `0`–`1`, blended over the layers below.                                            |
+| `from`, `to`| whole scene| Seconds within the scene when the layer is shown.                                  |
+| `keyframes` | –          | `{ "t": seconds, ...changes, "ease": ... }`, see below.                            |
+
+**Keyframes** change any of `x`, `y`, `opacity`, `color`, `sprite`, `text` at time `t` (seconds from the scene start). The layer's own values act as a keyframe at `t: 0`. Numbers and colours move smoothly from the previous keyframe that set them; `ease` on the arriving keyframe sets the pace: `linear` (default), `in`, `out`, `in-out`, or `step` (hold, then jump). `sprite` and `text` switch at their keyframe – use that for flipbook animation (e.g. a cat's walk cycle) or a growing heart drawn at several sizes.
+
+**Sprites** are defined once at the top level: `"sprites": { "name": { "palette": {...}, "rows": [...] } }`, rows of any equal-ish length, `.` or space transparent.
 
 ## Transitions
 
@@ -120,6 +161,6 @@ Up/down refer to the image (row 0 is the top).
 
 The build warns (it doesn't fail) when the output breaks the guidance in [SPEC.md](SPEC.md):
 
-- **dark pixels** – lit pixels with every channel below 40, which look off or "dirty" on the floor;
+- **dark pixels** – lit pixels with every channel below 40 for more than 0.5 s (passing fades are fine), which look off or "dirty" on the floor;
 - **long full white** – at least half the floor near-white for more than 3 s;
 - **strobing** – more than 3 full-floor light/dark flashes within one second.
