@@ -40,9 +40,11 @@ The build also prints safety warnings (too-dark pixels, long full white, strobin
 
 - `examples/test-orientation` – the single "UP" test frame the school asked for; red marks the top-left corner, green the top-right.
 - `examples/demo` – every scene type and several transitions.
+- `examples/layers` – movement written in code (`generate.ts`): dots meeting, a beating heart, a walking cat. The starting point for animations with movement.
 
 ## Animations
 
+Put animations in `animations/<name>/` – see [animations/README.md](animations/README.md). Anything there is public; personal ones go in a private repo that includes this one as a submodule (see [CLAUDE.md](CLAUDE.md#public-vs-private)).
 
 ## Code layout
 
@@ -54,6 +56,7 @@ The build also prints safety warnings (too-dark pixels, long full white, strobin
 
 ```bash
 npm run web            # http://localhost:5173
+node --watch examples/layers/generate.ts   # optional: regenerate index.json on every save
 ```
 
 Plays an animation on a 3D model of the floor in a dark dance hall (light from the floor spills onto the walls). Views: top-down landscape or portrait, from either long side, from either short side (the entrance), or free orbit with the mouse; eye height and distance from the floor are adjustable (locked in top-down and free views), and the frame can fill the panel or match human proportions (about 90° across at 3:2). Packages in `animations/` and `examples/` are listed automatically and reload when their files change; any package ZIP, `index.json` or delivered frames ZIP can be dropped onto the window. Music in a package plays in sync. `npm run web:build` writes a static site to `dist-web/`.

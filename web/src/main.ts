@@ -251,7 +251,7 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-const initial = bundled.find((p) => p.id === saved.source) ?? bundled[0];
+const initial = bundled.find((p) => p.id === saved.source) ?? bundled.find((p) => p.id === 'examples/layers') ?? bundled[0];
 for (const [id, label] of Object.entries(FRAMINGS)) ui.framing.append(new Option(label, id));
 ui.framing.value = saved.framing && saved.framing in FRAMINGS ? saved.framing : 'fill';
 floor.setFraming(ui.framing.value as Framing);

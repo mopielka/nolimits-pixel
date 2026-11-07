@@ -1,0 +1,338 @@
+{
+  "version": 1,
+  "title": "Layers example",
+  "sprites": {
+    "pink": {
+      "palette": {
+        "o": "#ff4fa3"
+      },
+      "rows": [
+        "oo",
+        "oo"
+      ]
+    },
+    "cyan": {
+      "palette": {
+        "o": "#33e6ff"
+      },
+      "rows": [
+        "oo",
+        "oo"
+      ]
+    },
+    "heart-s": {
+      "palette": {
+        "r": "#ff1a2e"
+      },
+      "rows": [
+        "rr.rr",
+        "rrrrr",
+        ".rrr.",
+        "..r.."
+      ]
+    },
+    "heart-m": {
+      "palette": {
+        "r": "#ff1a2e"
+      },
+      "rows": [
+        ".rr.rr.",
+        "rrrrrrr",
+        "rrrrrrr",
+        ".rrrrr.",
+        "..rrr..",
+        "...r..."
+      ]
+    },
+    "cat-a": {
+      "palette": {
+        "w": "#ffffff",
+        "o": "#ff8c1a",
+        "k": "#5a5a5a",
+        "e": "#7dff4f",
+        "n": "#ff8fb8"
+      },
+      "rows": [
+        "k.o...k",
+        "wewwwok",
+        "nwwkkw.",
+        "..w..w."
+      ]
+    },
+    "cat-b": {
+      "palette": {
+        "w": "#ffffff",
+        "o": "#ff8c1a",
+        "k": "#5a5a5a",
+        "e": "#7dff4f",
+        "n": "#ff8fb8"
+      },
+      "rows": [
+        "k.o...k",
+        "wewwwok",
+        "nwwkkw.",
+        "...ww.."
+      ]
+    }
+  },
+  "scenes": [
+    {
+      "type": "layers",
+      "name": "dots, heart, cat",
+      "duration": 10,
+      "layers": [
+        {
+          "name": "pink dot",
+          "sprite": "pink",
+          "x": 1,
+          "y": 1,
+          "to": 3.2,
+          "keyframes": [
+            {
+              "t": 0,
+              "opacity": 0
+            },
+            {
+              "t": 0.5,
+              "opacity": 1
+            },
+            {
+              "t": 0.8,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "t": 3,
+              "x": 12,
+              "y": 7,
+              "ease": "in-out"
+            }
+          ]
+        },
+        {
+          "name": "cyan dot",
+          "sprite": "cyan",
+          "x": 25,
+          "y": 13,
+          "to": 3.2,
+          "keyframes": [
+            {
+              "t": 0,
+              "opacity": 0
+            },
+            {
+              "t": 0.5,
+              "opacity": 1
+            },
+            {
+              "t": 0.8,
+              "x": 25,
+              "y": 13
+            },
+            {
+              "t": 3,
+              "x": 14,
+              "y": 7,
+              "ease": "in-out"
+            }
+          ]
+        },
+        {
+          "name": "heart",
+          "sprite": "heart-s",
+          "anchor": "center",
+          "x": 14,
+          "y": 4,
+          "from": 3,
+          "keyframes": [
+            {
+              "t": 3,
+              "y": 8
+            },
+            {
+              "t": 4,
+              "y": 4,
+              "ease": "out"
+            },
+            {
+              "t": 4.2,
+              "sprite": "heart-m"
+            },
+            {
+              "t": 4.8,
+              "sprite": "heart-s"
+            },
+            {
+              "t": 5.4,
+              "sprite": "heart-m"
+            },
+            {
+              "t": 6,
+              "sprite": "heart-s"
+            },
+            {
+              "t": 6.6,
+              "sprite": "heart-m"
+            },
+            {
+              "t": 7.2,
+              "sprite": "heart-s"
+            },
+            {
+              "t": 7.8,
+              "sprite": "heart-m"
+            },
+            {
+              "t": 8.4,
+              "sprite": "heart-s"
+            },
+            {
+              "t": 9.3,
+              "opacity": 1
+            },
+            {
+              "t": 9.9,
+              "opacity": 0
+            }
+          ]
+        },
+        {
+          "name": "greeting",
+          "text": "CZEŚĆ",
+          "color": "#33e6ff",
+          "anchor": "center",
+          "x": 14,
+          "y": 9.5,
+          "from": 4.5,
+          "keyframes": [
+            {
+              "t": 4.5,
+              "opacity": 0
+            },
+            {
+              "t": 5,
+              "opacity": 1
+            },
+            {
+              "t": 9.3,
+              "opacity": 1
+            },
+            {
+              "t": 9.9,
+              "opacity": 0
+            }
+          ]
+        },
+        {
+          "name": "cat",
+          "sprite": "cat-a",
+          "x": 29,
+          "y": 12,
+          "from": 5,
+          "keyframes": [
+            {
+              "t": 5,
+              "x": 29
+            },
+            {
+              "t": 9.5,
+              "x": -8
+            },
+            {
+              "t": 5,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 5.2,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 5.4,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 5.6000000000000005,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 5.800000000000001,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 6.000000000000001,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 6.200000000000001,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 6.400000000000001,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 6.600000000000001,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 6.800000000000002,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 7.000000000000002,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 7.200000000000002,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 7.400000000000002,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 7.600000000000002,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 7.8000000000000025,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 8.000000000000002,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 8.200000000000001,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 8.4,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 8.6,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 8.799999999999999,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 8.999999999999998,
+              "sprite": "cat-a"
+            },
+            {
+              "t": 9.199999999999998,
+              "sprite": "cat-b"
+            },
+            {
+              "t": 9.399999999999997,
+              "sprite": "cat-a"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

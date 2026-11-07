@@ -30,10 +30,11 @@ Read these before changing anything:
 - `src/cli/build.ts` – Node-only: reads a package, writes PNGs, the ZIP and the previews.
 - `web/` – Vite + three.js player: `floor-scene.ts` (dark dance hall, the floor as a canvas texture, cameras for each view), `sources.ts` (bundled packages via `import.meta.glob`, dropped ZIP/JSON files), `main.ts` (UI, playback, music sync).
 - `animations/<name>/` – real animations. Complex ones are written as `generate.ts` (+ `sprites.ts` for pixel art) that writes `index.json`; **commit the generated `index.json`** – the build and the player only read that.
-- `examples/` – small packages: `demo` (every scene type), `test-orientation` (the "UP" arrow frame the school asked for, red/green corner marks top-left/top-right).
+- `examples/` – small packages: `demo` (every scene type), `layers` (movement in code: dots, a beating heart, a walking cat), `test-orientation` (the "UP" arrow frame the school asked for, red/green corner marks top-left/top-right).
 
 ## Making a new animation
 
+1. Create `animations/<name>/`. For a simple one, hand-write `index.json`; for anything with movement, start from `examples/layers/generate.ts` (helpers for fades and walk cycles, sprites swapped to change size, a tricolour cat).
 2. Run `npm run web` and keep it open while editing – it reloads on every change to `index.json` (`node --watch animations/<name>/generate.ts` regenerates it on every save).
 3. **Look at the result, don't trust the numbers.** Render the frames (`npm run build`) and inspect key moments – overlaps are the usual bug: text touching a sprite, a dot next to a letter reading as an extra letter, a sprite crossing text. An upscaled contact sheet of a dozen frames is the quickest check.
 4. Stay within the floor's limits (all from SPEC.md; `lint` warns on the measurable ones):
@@ -51,6 +52,6 @@ Read these before changing anything:
 - Changes to `src/core` need a test in `test/core.test.ts` and an update to `FORMAT.md` if the format changes.
 - **Music is never committed** (`.gitignore` excludes audio files, and the deploy script refuses to publish them): songs are copyrighted and these repos are public. Keep the file locally in the package folder; `index.json` references it by name.
 
-## Context
+## Public vs private
 
-- The published player only shows what is committed in `animations/` and `examples/`; anyone with the link can see it.
+This repo and the published player are public: anything in `animations/` and `examples/` is visible to anyone with the link. Personal animations belong in a private repo that includes this one as a submodule (e.g. `pixel/`), importing `../pixel/src/core/...`; build them with `(cd pixel && npm run build -- ../<name> --out ../out)` and watch them by dropping their `index.json` onto the player. Never copy or symlink them into `animations/`.
